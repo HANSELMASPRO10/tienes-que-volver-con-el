@@ -1,0 +1,807 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <title>💔 ALCANZA TU EX 💔</title>
+  <style>
+    /* ============================================================
+       RESET & BASE + OPTIMIZACIONES EXTREMAS PARA CELULARES
+    ============================================================ */
+    *, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }
+    html, body {
+      width:100%; height:100%; overflow:hidden;
+      background:#05000f; font-family:'Courier New',Courier,monospace;
+      touch-action:none;
+    }
+
+    #bgCanvas, #gameCanvas {
+      position:fixed; top:0; left:0; width:100%; height:100%;
+    }
+    #bgCanvas { z-index:0; }
+    #gameCanvas { z-index:1; }
+
+    #ui { position:fixed; top:0; left:0; width:100%; height:100%; z-index:2; pointer-events:none; }
+
+    .screen {
+      position:absolute; top:0; left:0; width:100%; height:100%;
+      display:flex; flex-direction:column; align-items:center; justify-content:center;
+      pointer-events:all;
+    }
+
+    /* ============================================================
+       MARCA DE AGUA DIAGONAL CENTRADA - "HECHO POR HANS PARA TODAS LAS MIGAJERAS"
+    ============================================================ */
+    .watermark {
+      position:fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%) rotate(-45deg);
+      font-family:'Courier New',Courier,monospace;
+      font-size:clamp(11px,2.2vw,14px);
+      font-weight:bold;
+      letter-spacing:3px;
+      color:#ff69b4;
+      opacity:0.13;
+      pointer-events:none;
+      z-index:9999;
+      text-shadow:0 0 8px #8b0057;
+      white-space:nowrap;
+      text-align: center;
+    }
+
+    /* ============================================================
+       MENÚ
+    ============================================================ */
+    #menuScreen { background:rgba(5,0,15,0.94); }
+    .menu-title {
+      font-size:clamp(32px,8vw,58px); color:#ff69b4;
+      text-shadow:6px 6px #8b0057, 10px 10px #3a0022;
+      letter-spacing:6px; text-transform:uppercase; font-weight:bold;
+      animation:titlePulse 2s ease-in-out infinite;
+    }
+    @keyframes titlePulse {
+      0%,100% { text-shadow:6px 6px #8b0057, 10px 10px #3a0022; }
+      50% { text-shadow:6px 6px #ff3399, 10px 10px #8b0057, 0 0 40px #ff69b4; }
+    }
+    .menu-tagline { font-size:clamp(12px,2.8vw,16px); color:#cc88bb; letter-spacing:4px; margin-bottom:28px; }
+
+    .deco-hearts { display:flex; gap:14px; margin-bottom:28px; }
+    .deco-heart {
+      width:16px; height:16px; background:#ff3399;
+      clip-path:polygon(50% 0%,100% 40%,100% 70%,50% 100%,0% 70%,0% 40%);
+      animation:heartBeat 1.1s ease-in-out infinite;
+    }
+    .deco-heart:nth-child(2){animation-delay:0.15s;width:22px;height:22px;}
+    .deco-heart:nth-child(3){animation-delay:0.35s;}
+    .deco-heart:nth-child(4){animation-delay:0.1s;background:#cc2277;}
+    @keyframes heartBeat{0%,100%{transform:scale(1);} 35%{transform:scale(1.4);} 70%{transform:scale(0.85);}}
+
+    .controls-box {
+      background:rgba(13,0,32,0.95); border:3px solid #ff3399;
+      padding:18px 24px; width:clamp(290px,85vw,440px); margin-bottom:24px;
+      position:relative;
+    }
+    .controls-box::before {
+      content:'[ CONTROLES ]'; position:absolute; top:-12px; left:22px;
+      background:#05000f; padding:2px 10px; font-size:12px; color:#ff69b4;
+    }
+    .ctrl-key { color:#ff69b4; font-weight:bold; font-size:clamp(14px,3.5vw,17px); display:block; margin-bottom:4px; }
+    .ctrl-desc { color:#aa6688; font-size:clamp(11px,2.6vw,13px); line-height:1.45; }
+
+    .pixel-btn {
+      background:rgba(20,0,40,0.98); border:4px solid #ff69b4; color:#ff69b4;
+      padding:16px 32px; font-size:clamp(15px,4vw,18px); letter-spacing:4px;
+      cursor:pointer; text-transform:uppercase; font-weight:bold;
+      width:clamp(270px,82vw,400px); margin:8px auto; display:block;
+      transition:all 0.08s ease;
+    }
+    .pixel-btn:hover,.pixel-btn:active {
+      background:#ff69b4; color:#05000f; transform:scale(1.06);
+    }
+
+    /* ============================================================
+       HUD
+    ============================================================ */
+    #hud { position:absolute; top:0; left:0; width:100%; height:100%; pointer-events:none; display:none; }
+    #scoreDisplay { position:absolute; top:16px; right:22px; color:#ff69b4; font-size:clamp(16px,3.8vw,22px); letter-spacing:5px; text-shadow:3px 3px #400020; }
+    #hiScoreDisplay { position:absolute; top:46px; right:22px; color:#884499; font-size:clamp(11px,2.4vw,14px); letter-spacing:3px; }
+    #modeMsg {
+      position:absolute; top:78px; left:50%; transform:translateX(-50%);
+      color:#ff9de2; font-size:clamp(14px,3.4vw,19px); text-align:center;
+      width:92%; font-weight:bold; letter-spacing:3px;
+      text-shadow:3px 3px #400020; animation:modeGlow 1.8s infinite;
+    }
+    @keyframes modeGlow{0%,100%{text-shadow:3px 3px #400020;} 50%{text-shadow:3px 3px #400020,0 0 22px #ff69b4;}}
+
+    #distBar { position:absolute; top:18px; left:50%; transform:translateX(-50%); display:none; flex-direction:column; align-items:center; gap:6px; }
+    #distBarTrack { width:clamp(220px,62vw,340px); height:14px; background:#220033; border:3px solid #ff3399; position:relative; }
+    #distBarFill { height:100%; background:#ff3399; width:0%; transition:width 0.12s linear; }
+    #distBarFill::after { content:''; position:absolute; top:0; right:0; width:6px; height:100%; background:#ff99dd; }
+
+    /* ============================================================
+       TOUCH CONTROLS
+    ============================================================ */
+    #touchControls {
+      position:fixed; bottom:22px; left:0; right:0; display:none;
+      justify-content:space-around; padding:0 28px; z-index:10; pointer-events:none; gap:30px;
+    }
+    .touch-btn {
+      background:rgba(255,105,180,0.28); border:4px solid #ff69b4; color:#ff69b4;
+      width:102px; height:102px; border-radius:20px;
+      font-size:12px; letter-spacing:2px; font-weight:bold;
+      display:flex; flex-direction:column; align-items:center; justify-content:center;
+      text-transform:uppercase; pointer-events:all; user-select:none;
+      box-shadow:0 6px 0 #8b0057; transition:all 0.06s;
+    }
+    .touch-btn:active {
+      background:rgba(255,105,180,0.7); transform:translateY(4px); box-shadow:0 2px 0 #8b0057;
+    }
+    .touch-icon { font-size:34px; margin-bottom:6px; }
+
+    @media (max-width:480px) {
+      .touch-btn { width:108px; height:108px; }
+      .touch-icon { font-size:38px; }
+    }
+
+    /* ============================================================
+       GAME OVER + WIN
+    ============================================================ */
+    #gameoverOverlay, #winScreen { background:rgba(5,0,15,0.9); }
+    #gameoverTitle { font-size:clamp(38px,9vw,68px); color:#ff3399; letter-spacing:8px; animation:shake 0.5s ease; }
+    @keyframes shake{0%,100%{transform:translateX(0);} 20%{transform:translateX(-12px);} 40%{transform:translateX(12px);} 60%{transform:translateX(-8px);} 80%{transform:translateX(8px);}}
+    #gameoverSub { font-size:clamp(13px,3vw,18px); color:#cc66aa; margin:20px 0 32px; }
+
+    .win-title { font-size:clamp(28px,7vw,52px); color:#ff69b4; letter-spacing:5px; }
+    .win-sub { font-size:clamp(12px,2.8vw,16px); color:#cc88bb; }
+
+    #scanlines {
+      position:fixed; top:0; left:0; width:100%; height:100%; z-index:3; pointer-events:none;
+      background:repeating-linear-gradient(to bottom,transparent 0px,transparent 2px,rgba(0,0,0,0.09) 2px,rgba(0,0,0,0.09) 4px);
+      animation:scanMove 7s linear infinite;
+    }
+    @keyframes scanMove { from{background-position:0 0;} to{background-position:0 40px;} }
+  </style>
+</head>
+<body>
+
+<canvas id="bgCanvas"></canvas>
+<canvas id="gameCanvas"></canvas>
+
+<div id="ui">
+  <!-- MENU -->
+  <div id="menuScreen" class="screen">
+    <div class="menu-title">💔 ALCANZA TU EX 💔</div>
+    <p class="menu-tagline">— el juego que no pediste pero necesitabas —</p>
+
+    <div class="deco-hearts">
+      <div class="deco-heart"></div><div class="deco-heart"></div><div class="deco-heart"></div>
+      <div class="deco-heart"></div><div class="deco-heart"></div>
+    </div>
+
+    <div class="controls-box">
+      <div class="ctrl-row"><span class="ctrl-key">↑ / ESPACIO / W</span><span class="ctrl-desc">salta como cuando escapabas del chisme de que te engaña</span></div>
+      <hr style="border:none;border-top:1px dashed #440033;margin:12px 0;">
+      <div class="ctrl-row"><span class="ctrl-key">↓ / S</span><span class="ctrl-desc">agáchate como cuando le rogabas a él</span></div>
+      <div style="margin-top:18px;font-size:clamp(11px,2.4vw,13px);color:#cc77aa;text-align:center;line-height:1.4;">
+        📱 EN CELULAR:<br>
+        • Mitad SUPERIOR de la pantalla = SALTAR<br>
+        • Mitad INFERIOR de la pantalla = AGACHARSE
+      </div>
+    </div>
+
+    <button class="pixel-btn" onclick="startGame('infinite')">💫 AMOR INFINITO A ÉL 💫</button>
+    <button class="pixel-btn" onclick="startGame('chase')">🏃 ¡ALCANZALO A ÉL!! 🏃</button>
+
+    <p id="pressStart" class="blink" style="margin-top:28px;font-size:clamp(11px,2.4vw,14px);color:#884499;letter-spacing:4px;">— toca una opción para comenzar —</p>
+  </div>
+
+  <!-- HUD -->
+  <div id="hud">
+    <div id="scoreDisplay">HM: <span id="scoreNum">00000</span></div>
+    <div id="hiScoreDisplay">MEJOR: <span id="hiScoreNum">00000</span></div>
+    <div id="modeMsg"></div>
+    <div id="distBar">
+      <div id="distBarLabel">DISTANCIA AL CORAZÓN DE ÉL</div>
+      <div id="distBarTrack"><div id="distBarFill"></div></div>
+      <div id="distBarText"><span id="distNum">0</span>m / 500m</div>
+    </div>
+  </div>
+
+  <!-- GAMEOVER -->
+  <div id="gameoverOverlay" class="screen" style="display:none;">
+    <div id="gameoverTitle">GAME OVER</div>
+    <div id="gameoverSub">te volvió a romper el corazón 💔</div>
+    <div style="display:flex;gap:50px;margin:28px 0 36px;">
+      <div style="text-align:center;">
+        <div style="font-size:13px;color:#884499;letter-spacing:3px;">METROS</div>
+        <div id="goScoreVal" style="font-size:clamp(28px,6.5vw,44px);color:#ff69b4;font-weight:bold;">0</div>
+      </div>
+      <div style="text-align:center;">
+        <div style="font-size:13px;color:#884499;letter-spacing:3px;">RÉCORD</div>
+        <div id="goHiVal" style="font-size:clamp(28px,6.5vw,44px);color:#ffcc00;font-weight:bold;">0</div>
+      </div>
+    </div>
+    <button class="pixel-btn" onclick="restartGame()" style="width:auto;padding:14px 38px;margin:0 8px;">REINICIAR</button>
+    <button class="pixel-btn" onclick="goMenu()" style="width:auto;padding:14px 38px;margin:0 8px;border-color:#884499;color:#884499;">MENÚ</button>
+  </div>
+
+  <!-- WIN - TEXTO MODIFICADO -->
+  <div id="winScreen" class="screen" style="display:none;">
+    <div class="deco-hearts" style="margin-bottom:18px;">
+      <div class="deco-heart"></div><div class="deco-heart"></div><div class="deco-heart"></div>
+      <div class="deco-heart"></div><div class="deco-heart"></div>
+    </div>
+    <div class="win-title">💕 AL FINAL SÍ VOLVIERON 💕</div>
+    <p class="win-sub">no era tan difícil... ¿o sí era?</p>
+    <div style="background:rgba(13,0,32,0.95);border:3px solid #ff3399;padding:18px 48px;margin:28px 0;text-align:center;">
+      <span style="font-size:13px;color:#884499;letter-spacing:3px;display:block;">METROS RECORRIDOS</span>
+      <span id="winScoreVal" style="font-size:clamp(32px,7vw,48px);color:#ffcc00;font-weight:bold;letter-spacing:6px;">500</span>
+    </div>
+    <button class="pixel-btn" onclick="restartGame()" style="width:auto;padding:14px 38px;margin:0 8px;">OTRA VEZ</button>
+    <button class="pixel-btn" onclick="goMenu()" style="width:auto;padding:14px 38px;margin:0 8px;border-color:#884499;color:#884499;">MENÚ</button>
+  </div>
+</div>
+
+<!-- MARCA DE AGUA DIAGONAL CENTRADA EN TODO EL JUEGO -->
+<div class="watermark">HECHO POR HANS PARA TODAS LAS MIGAJERAS</div>
+
+<!-- TOUCH BUTTONS -->
+<div id="touchControls">
+  <button class="touch-btn" id="touchDown" ontouchstart="touchDuck(true)" ontouchend="touchDuck(false)">
+    <span class="touch-icon">↓</span>AGACHAR
+  </button>
+  <button class="touch-btn" id="touchJump" ontouchstart="touchJump()">
+    <span class="touch-icon">↑</span>SALTAR
+  </button>
+</div>
+
+<div id="scanlines"></div>
+
+<script>
+"use strict";
+
+/* ============================================================
+   CANVAS & SETUP
+============================================================ */
+const bgCanvas = document.getElementById('bgCanvas');
+const bgCtx = bgCanvas.getContext('2d');
+const canvas = document.getElementById('gameCanvas');
+const ctx = canvas.getContext('2d');
+
+let W = 0, H = 0;
+
+function resize() {
+  W = canvas.width = bgCanvas.width = window.innerWidth;
+  H = canvas.height = bgCanvas.height = window.innerHeight;
+  if (W < 700) ctx.imageSmoothingEnabled = false;
+  initBg();
+  drawBg();
+  document.getElementById('touchControls').style.display = (W < 700) ? 'flex' : 'none';
+}
+window.addEventListener('resize', resize);
+
+/* ============================================================
+   BACKGROUND
+============================================================ */
+const MAX_STARS = 240;
+const MAX_HEARTS = 52;
+let bgStars = [], bgHearts = [], bgTick = 0;
+
+function initBg() {
+  bgStars = []; bgHearts = [];
+  for (let i = 0; i < MAX_STARS; i++) {
+    bgStars.push({
+      x: Math.random() * W,
+      y: Math.random() * H,
+      r: Math.random() * 1.9 + 0.3,
+      phase: Math.random() * Math.PI * 2,
+      speed: Math.random() * 0.025 + 0.006,
+      col: ['#ffccee','#ffffff','#ffaacc','#ddaaff','#aaccff'][Math.floor(Math.random()*5)]
+    });
+  }
+  for (let i = 0; i < MAX_HEARTS; i++) {
+    bgHearts.push({
+      x: Math.random() * W,
+      y: Math.random() * H,
+      s: Math.random() * 5.5 + 3,
+      alpha: Math.random() * 0.24 + 0.05
+    });
+  }
+}
+
+function drawPixelBrokenHeart(c, x, y, s, alpha) {
+  c.save();
+  c.globalAlpha = alpha;
+  const left = '#ff3388', right = '#cc1166', crack = '#0a0010';
+  const pts = [[1,0],[2,0],[4,0],[5,0],[0,1],[1,1],[2,1],[3,1],[4,1],[5,1],[6,1],[0,2],[1,2],[2,2],[3,2],[4,2],[5,2],[6,2],[1,3],[2,3],[4,3],[5,3],[2,4],[3,4],[4,4],[3,5]];
+  const crackPts = new Set(['3,0','3,1','2,2','2,3']);
+  for (const [px,py] of pts) {
+    c.fillStyle = crackPts.has(`${px},${py}`) ? crack : (px < 3 ? left : right);
+    c.fillRect(x + px * s, y + py * s, s, s);
+  }
+  c.restore();
+}
+
+function drawBg() {
+  bgCtx.fillStyle = '#050010';
+  bgCtx.fillRect(0, 0, W, H);
+
+  const nebulas = [
+    {x:W*0.25, y:H*0.35, r:W*0.45, c:'rgba(80,0,60,0.24)'},
+    {x:W*0.75, y:H*0.65, r:W*0.38, c:'rgba(40,0,80,0.18)'},
+    {x:W*0.5,  y:H*0.88, r:W*0.32, c:'rgba(100,0,45,0.14)'}
+  ];
+  for (const n of nebulas) {
+    const g = bgCtx.createRadialGradient(n.x,n.y,0,n.x,n.y,n.r);
+    g.addColorStop(0,n.c); g.addColorStop(1,'rgba(0,0,0,0)');
+    bgCtx.fillStyle = g; bgCtx.fillRect(0,0,W,H);
+  }
+
+  bgTick++;
+  for (const star of bgStars) {
+    const brightness = 0.35 + 0.65 * Math.sin(star.phase + bgTick * star.speed);
+    bgCtx.globalAlpha = brightness;
+    bgCtx.fillStyle = star.col;
+    const sz = Math.ceil(star.r * 2);
+    bgCtx.fillRect(Math.floor(star.x), Math.floor(star.y), sz, sz);
+  }
+  bgCtx.globalAlpha = 1;
+
+  for (const h of bgHearts) drawPixelBrokenHeart(bgCtx, h.x, h.y, h.s, h.alpha);
+}
+
+/* ============================================================
+   DINO DRAWING
+============================================================ */
+function drawDino(c, x, y, s, ducking, frame) {
+  c.save();
+  c.fillStyle = '#cc3377';   // Jugadora = ROSA
+
+  if (!ducking) {
+    const head = [[2,0],[3,0],[4,0],[5,0],[1,1],[2,1],[3,1],[4,1],[5,1],[6,1],[0,2],[1,2],[2,2],[3,2],[4,2],[5,2],[6,2],[7,2],[0,3],[1,3],[2,3],[3,3],[4,3],[5,3],[6,3],[7,3]];
+    const body = [[0,4],[1,4],[2,4],[3,4],[4,4],[5,4],[6,4],[7,4],[0,5],[1,5],[2,5],[3,5],[4,5],[5,5],[6,5],[1,6],[2,6],[3,6],[4,6],[5,6],[2,7],[3,7],[4,7],[5,7],[3,8],[4,8],[5,8],[4,9],[5,9]];
+    [...head,...body].forEach(([px,py])=>c.fillRect(x+px*s,y+py*s,s,s));
+    c.fillRect(x+7*s,y+4*s,s,s); c.fillRect(x+8*s,y+4*s,s,s); c.fillRect(x+8*s,y+5*s,s,s);
+    if (frame===0) {
+      c.fillRect(x+3*s,y+10*s,s,s); c.fillRect(x+3*s,y+11*s,s,s); c.fillRect(x+4*s,y+11*s,s,s);
+      c.fillRect(x+5*s,y+10*s,s,s); c.fillRect(x+6*s,y+11*s,s,s);
+    } else {
+      c.fillRect(x+5*s,y+10*s,s,s); c.fillRect(x+5*s,y+11*s,s,s); c.fillRect(x+6*s,y+11*s,s,s);
+      c.fillRect(x+3*s,y+10*s,s,s); c.fillRect(x+2*s,y+11*s,s,s);
+    }
+    c.fillStyle='#ffffff'; c.fillRect(x+4*s,y+1*s,s,s);
+    c.fillStyle='#1a1a1a'; c.fillRect(x+4*s,y+1*s,Math.ceil(s*0.7),Math.ceil(s*0.7));
+  } else {
+    const duckBody = [[3,0],[4,0],[5,0],[6,0],[7,0],[8,0],[2,1],[3,1],[4,1],[5,1],[6,1],[7,1],[8,1],[9,1],[1,2],[2,2],[3,2],[4,2],[5,2],[6,2],[7,2],[8,2],[9,2],[0,3],[1,3],[2,3],[3,3],[4,3],[5,3],[6,3],[1,4],[2,4],[3,4],[4,4],[5,4]];
+    duckBody.forEach(([px,py])=>c.fillRect(x+px*s,y+py*s,s,s));
+    c.fillRect(x+9*s,y+2*s,s,s); c.fillRect(x+10*s,y+3*s,s,s);
+    if (frame===0) {
+      c.fillRect(x+2*s,y+5*s,s,s); c.fillRect(x+3*s,y+5*s,s,s); c.fillRect(x+5*s,y+5*s,s,s); c.fillRect(x+6*s,y+5*s,s,s);
+    } else {
+      c.fillRect(x+2*s,y+5*s,s*5,s);
+    }
+    c.fillStyle='#ffffff'; c.fillRect(x+5*s,y+1*s,s,s);
+    c.fillStyle='#1a1a1a'; c.fillRect(x+5*s,y+1*s,Math.ceil(s*0.7),Math.ceil(s*0.7));
+  }
+  c.restore();
+}
+
+function drawExDino(c, x, y, s, frame) {
+  c.save();
+  c.fillStyle = '#5a5a5a';   // Chico / Ex = PLOMO
+
+  const body = [[2,0],[3,0],[4,0],[5,0],[1,1],[2,1],[3,1],[4,1],[5,1],[6,1],[0,2],[1,2],[2,2],[3,2],[4,2],[5,2],[6,2],[7,2],[0,3],[1,3],[2,3],[3,3],[4,3],[5,3],[6,3],[0,4],[1,4],[2,4],[3,4],[4,4],[5,4],[1,5],[2,5],[3,5],[4,5],[5,5],[2,6],[3,6],[4,6],[5,6],[3,7],[4,7],[5,7],[4,8],[5,8]];
+  body.forEach(([px,py])=>c.fillRect(x+px*s,y+py*s,s,s));
+  c.fillRect(x+7*s,y+4*s,s,s); c.fillRect(x+8*s,y+4*s,s,s); c.fillRect(x+8*s,y+5*s,s,s);
+  if (frame===0) {
+    c.fillRect(x+3*s,y+10*s,s,s); c.fillRect(x+3*s,y+11*s,s,s); c.fillRect(x+4*s,y+11*s,s,s);
+    c.fillRect(x+5*s,y+10*s,s,s); c.fillRect(x+6*s,y+11*s,s,s);
+  } else {
+    c.fillRect(x+5*s,y+10*s,s,s); c.fillRect(x+5*s,y+11*s,s,s); c.fillRect(x+6*s,y+11*s,s,s);
+    c.fillRect(x+3*s,y+10*s,s,s); c.fillRect(x+2*s,y+11*s,s,s);
+  }
+  c.fillStyle='#ffffff'; c.fillRect(x+4*s,y+1*s,s,s);
+  c.fillStyle='#1a1a1a'; c.fillRect(x+4*s,y+1*s,Math.ceil(s*0.7),Math.ceil(s*0.7));
+  c.restore();
+}
+
+function drawPixelHeart(c, x, y, s) {
+  c.fillStyle = '#ff3399';
+  [[1,0],[2,0],[4,0],[5,0],[0,1],[1,1],[2,1],[3,1],[4,1],[5,1],[6,1],[0,2],[1,2],[2,2],[3,2],[4,2],[5,2],[6,2],[1,3],[2,3],[3,3],[4,3],[5,3],[2,4],[3,4],[4,4],[3,5]].forEach(([px,py])=>c.fillRect(x+px*s,y+py*s,s,s));
+  c.fillStyle = '#ff99dd'; c.fillRect(x+2*s,y+1*s,s,s);
+}
+
+/* ============================================================
+   OBSTÁCULOS (más lejos)
+============================================================ */
+const OBSTACLE_DEFS = [
+  {name:'te_extrano_cactus',label:'TE EXTRAÑO',color:'#cc88ff',w:3,h:7,draw:(c,x,y,s)=>{c.fillStyle='#884499';[[1,0],[1,1],[0,2],[1,2],[2,2],[1,3],[1,4],[1,5],[1,6],[0,6],[2,6]].forEach(p=>c.fillRect(x+p[0]*s,y+p[1]*s,s,s))}},
+  {name:'gift_ignored',label:'REGALO RECHAZADO',color:'#ff9de2',w:4,h:5,draw:(c,x,y,s)=>{c.fillStyle='#ff3355';for(let i=0;i<4;i++)for(let j=1;j<5;j++)c.fillRect(x+i*s,y+j*s,s,s);c.fillStyle='#ff99bb';c.fillRect(x+s,y+s,s,s*4);c.fillRect(x,y+2*s,s*4,s);c.fillStyle='#ffcc00';c.fillRect(x+s,y,s,s);c.fillRect(x+2*s,y,s,s);c.fillStyle='#ff0000';c.fillRect(x+3*s,y-s,s,s);c.fillRect(x+3*s,y-s+Math.ceil(s*0.4),s,s)}},
+  {name:'crown_betrayal',label:'TE CORONÓ',color:'#ffee66',w:5,h:5,draw:(c,x,y,s)=>{c.fillStyle='#ffcc00';[[0,1],[0,2],[0,3],[1,3],[2,3],[3,3],[4,3],[4,2],[4,1],[0,0],[2,0],[4,0]].forEach(p=>c.fillRect(x+p[0]*s,y+p[1]*s,s,s));c.fillRect(x,y+4*s,s*5,s);c.fillStyle='#ff3333';c.fillRect(x+2*s,y,s,s);c.fillStyle='#3399ff';c.fillRect(x,y+2*s,s,s);c.fillRect(x+4*s,y+2*s,s,s)}},
+  {name:'notif_visto',label:'DEJADO EN VISTO',color:'#6699ff',w:5,h:6,draw:(c,x,y,s)=>{c.fillStyle='#334466';[[1,0],[2,0],[3,0],[0,1],[1,1],[2,1],[3,1],[4,1],[0,2],[1,2],[2,2],[3,2],[4,2],[0,3],[1,3],[2,3],[3,3],[4,3],[0,4],[1,4],[2,4],[3,4],[4,4],[1,5],[2,5],[3,5]].forEach(p=>c.fillRect(x+p[0]*s,y+p[1]*s,s,s));c.fillStyle='#3366ff';c.fillRect(x+s,y+2*s,s*3,s);c.fillRect(x+s,y+3*s,s*2,s);c.fillStyle='#33ccff';c.fillRect(x+s,y+4*s,s,s);c.fillRect(x+2*s,y+4*s,s,s);c.fillRect(x+3*s,y+4*s,s,s);c.fillStyle='#ff2222';c.fillRect(x+4*s,y,s,s)}},
+  {name:'carta_sin_leer',label:'CARTA SIN LEER',color:'#ffddaa',w:5,h:4,draw:(c,x,y,s)=>{c.fillStyle='#ffeecc';for(let i=0;i<5;i++)for(let j=0;j<4;j++)c.fillRect(x+i*s,y+j*s,s,s);c.fillStyle='#ddaa77';c.fillRect(x,y,s*2,s);c.fillRect(x+3*s,y,s*2,s);c.fillRect(x+2*s,y+s,s,s);c.fillStyle='#bbaa99';c.fillRect(x+s,y+2*s,s*3,Math.ceil(s*0.5));c.fillRect(x+s,y+3*s,s*2,Math.ceil(s*0.5));c.fillStyle='#ff2222';c.fillRect(x+4*s,y-s,s,s);c.fillRect(x+4*s,y-s+Math.ceil(s*0.5),s,s)}},
+  {name:'su_ex_alto',label:'SU EX',color:'#ff7799',w:3,h:10,draw:(c,x,y,s)=>{c.fillStyle='#aa44bb';[[1,0],[1,1],[1,2],[0,3],[1,3],[2,3],[1,4],[1,5],[1,6],[1,7],[0,8],[1,8],[2,8],[0,9],[2,9]].forEach(p=>c.fillRect(x+p[0]*s,y+p[1]*s,s,s));c.fillStyle='#ffffff';c.fillRect(x+s,y-s*2,s,s);c.fillStyle='#aa44bb';c.fillRect(x+s,y-s*2,Math.ceil(s*0.5),Math.ceil(s*0.5))}},
+  {name:'rogar_pose',label:'EL RUEGO',color:'#ffbb66',w:4,h:5,draw:(c,x,y,s)=>{c.fillStyle='#cc7722';c.fillRect(x+s,y,s*2,s);c.fillRect(x+s,y+s,s*2,s);c.fillRect(x+s,y+2*s,s*2,s);c.fillRect(x,y+2*s,s,s);c.fillRect(x+3*s,y+2*s,s,s);c.fillRect(x-s,y+2*s,s,s);c.fillRect(x+4*s,y+2*s,s,s);c.fillRect(x+s,y+3*s,s,s);c.fillRect(x+2*s,y+3*s,s,s);c.fillRect(x+s,y+4*s,s,s);c.fillRect(x+2*s,y+4*s,s,s);c.fillStyle='#66aaff';c.fillRect(x+s,y+s+Math.ceil(s*0.6),Math.ceil(s*0.5),Math.ceil(s*0.5));c.fillRect(x+2*s,y+s+Math.ceil(s*0.6),Math.ceil(s*0.5),Math.ceil(s*0.5))}},
+  {name:'chisme_burbuja',label:'EL CHISME',color:'#ff9900',w:5,h:4,draw:(c,x,y,s)=>{c.fillStyle='#ff8800';[[0,0],[1,0],[2,0],[3,0],[4,0],[0,1],[1,1],[2,1],[3,1],[4,1],[0,2],[1,2],[2,2],[3,2],[4,2],[1,3]].forEach(p=>c.fillRect(x+p[0]*s,y+p[1]*s,s,s));c.fillStyle='#ffffff';c.fillRect(x+2*s,y+s,s,s);c.fillRect(x+2*s,y+Math.ceil(s*1.7),s,Math.ceil(s*0.5))}}
+];
+
+let gameMode = null, running = false, gameover = false, won = false;
+let dinoX, dinoY, dinoVY, ducking = false, onGround = true;
+let dinoFrame = 0, frameTimer = 0, dinoScale;
+let groundY, obstacles = [], speed = 4.5, speedTimer = 0, score = 0, hiScore = 0;
+let exDinoX, winTimer = 0, heartBob = 0, particles = [];
+let msgVisible = true, msgTimer = 0;
+const MSG_DURATION = 600;
+
+/* ============================================================
+   AJUSTES (sin cambios en mecánica)
+============================================================ */
+const JUMP_VELOCITY = -0.0375;
+const GRAVITY = 1.18;
+const SPEED_RAMP_INTERVAL = 195;
+const SPEED_RAMP_AMOUNT = 0.26;
+
+const MIN_OBSTACLE_GAP = 200;
+const BASE_OBSTACLE_GAP = 350;
+const GAP_RANDOM_RANGE = 140;
+const GAP_REDUCTION_FACTOR = 1.72;
+
+const CHASE_TARGET = 500;
+
+let nextObstDist = 280;
+
+/* ============================================================
+   LAYOUT
+============================================================ */
+function getGroundY() { return Math.floor(H * 0.73); }
+function getDinoScale() { return Math.max(2, Math.floor(W / 128)); }
+function getDinoH(s) { return s * 12; }
+function getDinoHDuck(s) { return s * 6; }
+
+/* ============================================================
+   INPUT
+============================================================ */
+const keysDown = {};
+
+window.addEventListener('keydown', e => {
+  if (keysDown[e.code]) return;
+  keysDown[e.code] = true;
+  if (running && !gameover && !won) {
+    if (['Space','ArrowUp','KeyW'].includes(e.code) && onGround && !ducking) doJump();
+    if (['ArrowDown','KeyS'].includes(e.code) && onGround) ducking = true;
+  }
+  if (gameover && e.code === 'Space') restartGame();
+});
+
+window.addEventListener('keyup', e => {
+  keysDown[e.code] = false;
+  if (['ArrowDown','KeyS'].includes(e.code)) ducking = false;
+});
+
+canvas.addEventListener('touchstart', e => {
+  if (!running || gameover || won) return;
+  const ty = e.touches[0].clientY;
+  if (ty < H * 0.5) {
+    if (onGround && !ducking) doJump();
+  } else {
+    if (onGround) ducking = true;
+  }
+  e.preventDefault();
+}, { passive: false });
+
+canvas.addEventListener('touchend', () => { ducking = false; }, { passive: true });
+
+function touchJump() { if (running && !gameover && !won && onGround && !ducking) doJump(); }
+function touchDuck(state) { if (running && !gameover && !won && onGround) ducking = state; }
+
+function doJump() {
+  dinoVY = H * JUMP_VELOCITY;
+  onGround = false;
+}
+
+/* ============================================================
+   INICIO DEL JUEGO
+============================================================ */
+function startGame(mode) {
+  gameMode = mode;
+
+  document.getElementById('menuScreen').style.display = 'none';
+  document.getElementById('winScreen').style.display = 'none';
+  document.getElementById('gameoverOverlay').style.display = 'none';
+  document.getElementById('hud').style.display = 'block';
+  document.getElementById('distBar').style.display = mode === 'chase' ? 'flex' : 'none';
+
+  groundY = getGroundY();
+  dinoScale = getDinoScale();
+  const s = dinoScale;
+  dinoX = Math.floor(W * 0.12);
+  dinoY = groundY - getDinoH(s);
+  dinoVY = 0;
+  ducking = false;
+  onGround = true;
+  dinoFrame = 0; frameTimer = 0;
+  obstacles = [];
+  score = 0; speed = 4.5; speedTimer = 0;
+  gameover = false; won = false;
+  exDinoX = W + 220;
+  winTimer = 0; heartBob = 0;
+  particles = [];
+  running = true;
+  msgVisible = true; msgTimer = 0;
+  nextObstDist = 280 + Math.random() * 90;
+
+  const modeEl = document.getElementById('modeMsg');
+  modeEl.style.opacity = '1';
+  modeEl.style.transition = 'none';
+  if (mode === 'infinite') {
+    modeEl.innerHTML = '💫 ES INFINITO COMO EL AMOR A ÉL 💫';
+  } else {
+    modeEl.innerHTML = '🏃 ¡ALCANZALO A ÉL!! — LLEGA A 500 METROS 🏃';
+  }
+
+  requestAnimationFrame(gameLoop);
+}
+
+function restartGame() { if (gameMode) startGame(gameMode); }
+function goMenu() {
+  running = false;
+  document.getElementById('menuScreen').style.display = 'flex';
+  document.getElementById('winScreen').style.display = 'none';
+  document.getElementById('gameoverOverlay').style.display = 'none';
+  document.getElementById('hud').style.display = 'none';
+}
+
+/* ============================================================
+   SPAWN DE OBSTÁCULOS
+============================================================ */
+function spawnObstacle() {
+  const s = dinoScale;
+  const def = OBSTACLE_DEFS[Math.floor(Math.random() * OBSTACLE_DEFS.length)];
+  const h = def.h * s;
+  const canFly = score > 320 && Math.random() < 0.16;
+  const yOff = canFly ? s * 6 : 0;
+  const randomXOffset = Math.random() * 45 - 15;
+
+  obstacles.push({
+    x: W + 70 + randomXOffset,
+    y: groundY - h - yOff,
+    def, s, flying: canFly
+  });
+}
+
+/* ============================================================
+   PARTÍCULAS
+============================================================ */
+function spawnDeathParticles(cx, cy) {
+  const colors = ['#ff3399','#ff99dd','#cc0066','#ff66bb','#ffffff'];
+  for (let i = 0; i < 42; i++) {
+    const angle = (Math.PI * 2 * i) / 42 + (Math.random() - 0.5) * 0.4;
+    const speed = Math.random() * 5.5 + 2.5;
+    particles.push({ x: cx, y: cy, vx: Math.cos(angle) * speed, vy: Math.sin(angle) * speed - 2.5, life: Math.floor(Math.random() * 28 + 22), max: 48, s: Math.random() * 4.5 + 2, col: colors[Math.floor(Math.random() * colors.length)] });
+  }
+}
+
+function spawnWinParticles() {
+  const colors = ['#ff3399','#ffcc00','#ff99dd','#ff66bb','#ffffff','#ffeeaa'];
+  for (let i = 0; i < 72; i++) {
+    particles.push({
+      x: Math.random() * W,
+      y: Math.random() * H * 0.55,
+      vx: (Math.random() - 0.5) * 3.5,
+      vy: Math.random() * 2.2 + 0.6,
+      life: Math.floor(Math.random() * 85 + 65),
+      max: 155,
+      s: Math.random() * 6.5 + 3,
+      col: colors[Math.floor(Math.random() * colors.length)],
+      heart: Math.random() < 0.45
+    });
+  }
+}
+
+function updateParticles() {
+  for (let i = particles.length - 1; i >= 0; i--) {
+    const p = particles[i];
+    p.x += p.vx; p.y += p.vy;
+    if (p.heart) p.vy += 0.055;
+    p.life--;
+    if (p.life <= 0) particles.splice(i, 1);
+  }
+}
+
+/* ============================================================
+   COLISIÓN
+============================================================ */
+function checkCollision(obs) {
+  const s = dinoScale, margin = Math.floor(s * 0.55);
+  const dx = dinoX + s, dy = dinoY + margin;
+  const dw = ducking ? s * 10.5 - margin * 2 : s * 7.5;
+  const dh = (ducking ? getDinoHDuck(s) : getDinoH(s)) - margin * 2;
+  const ox = obs.x + margin, oy = obs.y + margin;
+  const ow = obs.def.w * obs.s - margin * 2;
+  const oh = obs.def.h * obs.s - margin * 2;
+  return dx < ox + ow && dx + dw > ox && dy < oy + oh && dy + dh > oy;
+}
+
+/* ============================================================
+   UPDATE - CINEMÁTICA SIN OBSTÁCULO EXTRA
+============================================================ */
+function update() {
+  const s = dinoScale;
+
+  if (msgVisible) {
+    msgTimer++;
+    if (msgTimer >= MSG_DURATION) {
+      msgVisible = false;
+      document.getElementById('modeMsg').style.transition = 'opacity 1.4s';
+      document.getElementById('modeMsg').style.opacity = '0';
+    }
+  }
+
+  if (!onGround) {
+    dinoVY += GRAVITY;
+    dinoY += dinoVY;
+    const floorY = groundY - (ducking ? getDinoHDuck(s) : getDinoH(s));
+    if (dinoY >= floorY) {
+      dinoY = floorY;
+      dinoVY = 0;
+      onGround = true;
+    }
+  }
+  if (onGround) dinoY = groundY - (ducking ? getDinoHDuck(s) : getDinoH(s));
+
+  if (!keysDown['ArrowDown'] && !keysDown['KeyS']) ducking = false;
+
+  frameTimer++;
+  if (frameTimer >= 7) { frameTimer = 0; dinoFrame = 1 - dinoFrame; }
+
+  speedTimer++;
+  if (speedTimer >= SPEED_RAMP_INTERVAL && speed < 18.5) {
+    speedTimer = 0;
+    speed += SPEED_RAMP_AMOUNT;
+  }
+
+  nextObstDist -= speed;
+  if (nextObstDist <= 0) {
+    spawnObstacle();
+    const currentGap = BASE_OBSTACLE_GAP * (4.5 / speed) * GAP_REDUCTION_FACTOR;
+    const randomExtra = Math.random() * GAP_RANDOM_RANGE;
+    nextObstDist = Math.max(MIN_OBSTACLE_GAP, Math.floor(currentGap + randomExtra));
+  }
+
+  for (let i = obstacles.length - 1; i >= 0; i--) {
+    obstacles[i].x -= speed;
+    if (obstacles[i].x < -220) obstacles.splice(i, 1);
+  }
+
+  score += speed * 0.029;
+  document.getElementById('scoreNum').innerText = Math.floor(score).toString().padStart(5, '0');
+  document.getElementById('hiScoreNum').innerText = Math.max(hiScore, Math.floor(score)).toString().padStart(5, '0');
+
+  if (gameMode === 'chase') {
+    const pct = Math.min(score / CHASE_TARGET, 1) * 100;
+    document.getElementById('distBarFill').style.width = pct + '%';
+    document.getElementById('distNum').innerText = Math.min(Math.floor(score), CHASE_TARGET);
+
+    if (score >= CHASE_TARGET && !won) {
+      won = true;
+      speed = 0;
+      obstacles = [];               // desaparecen TODOS los obstáculos
+      exDinoX = W + 120;
+      spawnWinParticles();
+    }
+  }
+
+  if (won) {
+    heartBob = (heartBob + 0.065) % (Math.PI * 2);
+    exDinoX -= 3.2;
+    const meetX = dinoX + s * 9.5;
+    if (exDinoX <= meetX) {
+      exDinoX = meetX;
+      winTimer++;
+      if (winTimer > 235) {
+        document.getElementById('winScoreVal').innerText = Math.floor(score);
+        document.getElementById('winScreen').style.display = 'flex';
+        running = false;
+      }
+    }
+    updateParticles();
+    return;
+  }
+
+  for (const obs of obstacles) {
+    if (checkCollision(obs)) {
+      triggerGameover();
+      return;
+    }
+  }
+
+  updateParticles();
+}
+
+function triggerGameover() {
+  gameover = true;
+  if (Math.floor(score) > hiScore) hiScore = Math.floor(score);
+  spawnDeathParticles(dinoX + dinoScale * 4.5, dinoY + dinoScale * 5.5);
+  document.getElementById('goScoreVal').innerText = Math.floor(score);
+  document.getElementById('goHiVal').innerText = hiScore;
+  setTimeout(() => document.getElementById('gameoverOverlay').style.display = 'flex', 380);
+  running = false;
+}
+
+/* ============================================================
+   RENDER
+============================================================ */
+function renderFrame() {
+  ctx.clearRect(0, 0, W, H);
+  const s = dinoScale, gY = groundY;
+
+  ctx.fillStyle = '#331144'; ctx.fillRect(0, gY, W, 4);
+  ctx.fillStyle = '#1a0022'; ctx.fillRect(0, gY + 4, W, 3);
+  ctx.fillStyle = '#553366';
+  const offset = Math.floor(score * speed * 2.2) % 22;
+  for (let gx = -offset; gx < W + 30; gx += 22) ctx.fillRect(Math.floor(gx), gY, 9, 3);
+
+  for (const obs of obstacles) {
+    obs.def.draw(ctx, obs.x, obs.y, obs.s);
+    if (obs.flying) {
+      ctx.fillStyle = '#ff55aa';
+      ctx.fillRect(obs.x + obs.s * Math.floor(obs.def.w / 2), obs.y - obs.s * 1.2, obs.s, obs.s);
+    }
+    ctx.save();
+    ctx.font = `bold ${Math.max(10, Math.floor(obs.s * 1.65))}px "Courier New", monospace`;
+    ctx.fillStyle = obs.def.color;
+    ctx.globalAlpha = 0.88;
+    ctx.fillText(obs.def.label, obs.x, obs.y - Math.ceil(obs.s * 0.6));
+    ctx.restore();
+  }
+
+  drawDino(ctx, dinoX, dinoY, s, ducking, dinoFrame);
+
+  if (won && exDinoX > 0) {
+    ctx.save();
+    const exMirrorX = exDinoX + s * 9.5;
+    ctx.translate(exMirrorX, 0);
+    ctx.scale(-1, 1);
+    drawExDino(ctx, 0, dinoY, s, dinoFrame);
+    ctx.restore();
+
+    const hx = Math.floor((dinoX + exDinoX + s * 9.5) / 2) - s * 3.5;
+    const hy = dinoY - s * 11 + Math.floor(Math.sin(heartBob) * s * 2);
+    drawPixelHeart(ctx, hx, hy, s);
+  }
+
+  for (const p of particles) {
+    ctx.save();
+    ctx.globalAlpha = Math.max(0, p.life / p.max);
+    ctx.fillStyle = p.col;
+    if (p.heart) {
+      const hs = Math.ceil(p.s / 3);
+      [[1,0],[2,0],[0,1],[1,1],[2,1],[3,1],[0,2],[1,2],[2,2],[3,2],[1,3],[2,3],[3,3],[2,4]].forEach(([hx,hy])=>ctx.fillRect(p.x+hx*hs,p.y+hy*hs,hs,hs));
+    } else {
+      ctx.fillRect(p.x, p.y, p.s, p.s);
+    }
+    ctx.restore();
+  }
+}
+
+/* ============================================================
+   GAME LOOP
+============================================================ */
+function gameLoop() {
+  if (!running) return;
+  update();
+  drawBg();
+  renderFrame();
+  requestAnimationFrame(gameLoop);
+}
+
+/* ============================================================
+   INICIO
+============================================================ */
+resize();
+</script>
+</body>
+</html>
